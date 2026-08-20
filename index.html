@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>청소당번 제비뽑기</title>
+<style>
+  :root{
+    --bg: #ffffff;
+    --card: #ffffff;
+    --border: #ece8e0;
+    --text: #2b2926;
+    --text-muted: #948d7e;
+    --primary: #4f46e5;
+    --primary-light: #eef0fe;
+    --accent: #ff6b4a;
+    --success: #1f9d55;
+    --success-light: #eafaf0;
+    --radius: 16px;
+    --shadow: 0 1px 2px rgba(30,25,15,0.04), 0 10px 26px rgba(30,25,15,0.06);
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap{
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 20px 64px;
+  }
+  header{ text-align:center; margin-bottom: 20px; }
+  header h1{ font-size: 23px; margin: 0 0 6px; letter-spacing: -0.02em; }
+  header p{ margin:0; color: var(--text-muted); font-size: 13.5px; }
+
+  .tabs{
+    display:flex; gap:6px;
+    background: #faf9f6;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 5px;
+    margin-bottom: 20px;
+  }
+  .tab-btn{
+    flex:1; border:none; background: transparent;
+    padding: 10px 8px; font-size: 14px; font-weight: 700;
+    color: var(--text-muted); border-radius: 8px; cursor:pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-btn.active{ background: var(--primary); color:#fff; }
+  .panel{ display:none; }
+  .panel.active{ display:block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn{ from{opacity:0; transform: translateY(4px);} to{opacity:1; transform: translateY(0);} }
+
+  .card{
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+  }
+  .card-head{
+    display:flex; justify-content:space-between; align-items:flex-start;
+    gap: 10px; margin-bottom: 14px;
+  }
+  .card-head h2{ font-size: 15px; margin: 0 0 4px; }
+  .card-head .sub{ font-size: 12.5px; color: var(--text-muted); margin:0; }
+  .side-btn{
+    flex-shrink:0;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor:pointer;
+    white-space: nowrap;
+  }
+  .side-btn:hover{ background: #faf9f6; }
+
+  /* ---------- 인원 칩 ---------- */
+  .chip-grid{
+    display:flex; flex-wrap: wrap; gap: 10px;
+  }
+  .chip{
+    padding: 10px 18px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor:pointer;
+    border: 2px solid transparent;
+    color: #3a352c;
+    position:relative;
+    transition: transform 0.1s, box-shadow 0.15s, border-color 0.15s;
+    user-select:none;
+  }
+  .chip:hover{ transform: translateY(-1px); }
+  .chip.selected{
+    border-color: var(--primary);
+    box-shadow: 0 3px 10px rgba(79,70,229,0.18);
+  }
+  .chip.selected::after{
+    content: "✓";
+    position:absolute;
+    top:-6px; right:-6px;
+    width:18px; height:18px;
+    background: var(--primary);
+    color:#fff;
+    border-radius:50%;
+    font-size: 11px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .chip-empty{ color: var(--text-muted); font-size: 13px; }
+
+  .status-line{
+    font-size: 12.5px; color: var(--text-muted);
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+  .status-line b{ color: var(--text); }
+
+  /* ---------- 원형 테이블 ---------- */
+  .table-card{ text-align:center; }
+  .table-outer{
+    display:flex; justify-content:center;
+    margin: 6px 0 4px;
+  }
+  .table-wrap{
+    position:relative;
+    width: 260px; height: 260px;
+  }
+  .table-wrap > svg{ position:absolute; top:0; left:0; }
+  .stick{ transform-box: fill-box; transform-origin: 50% 100%; }
+  .table-wrap.drawing .stick{ animation: stickShake 0.28s ease-in-out infinite; }
+  @keyframes stickShake{
+    0%,100%{ transform: rotate(var(--rot)); }
+    50%{ transform: rotate(calc(var(--rot) + 10deg)); }
+  }
+  .seats{ position:absolute; top:0; left:0; width:100%; height:100%; }
+  .seat{
+    position:absolute;
+    transform: translate(-50%, -50%);
+    display:flex; flex-direction:column; align-items:center;
+    gap: 2px;
+    animation: popIn 0.25s ease;
+  }
+  @keyframes popIn{ from{ opacity:0; transform: translate(-50%,-50%) scale(0.5);} to{ opacity:1; transform: translate(-50%,-50%) scale(1);} }
+  .table-wrap.drawing .seat{
+    animation: hulaSway 0.7s ease-in-out infinite;
+    animation-delay: var(--bd, 0s);
+  }
+  @keyframes hulaSway{
+    0%,100%{ transform: translate(-50%,-50%) rotate(calc(var(--dir, 1) * -9deg)) translateX(calc(var(--dir, 1) * -5px)) translateY(0) scale(1); }
+    25%{ transform: translate(-50%,-50%) rotate(0deg) translateX(0) translateY(-4px) scale(1.03); }
+    50%{ transform: translate(-50%,-50%) rotate(calc(var(--dir, 1) * 9deg)) translateX(calc(var(--dir, 1) * 5px)) translateY(0) scale(1); }
+    75%{ transform: translate(-50%,-50%) rotate(0deg) translateX(0) translateY(-4px) scale(1.03); }
+  }
+  .arm{ transform-box:fill-box; transform-origin:50% 0%; }
+  .table-wrap.drawing .seat .arm-left{
+    animation: hulaArmLeft 0.7s ease-in-out infinite;
+    animation-delay: var(--bd, 0s);
+  }
+  .table-wrap.drawing .seat .arm-right{
+    animation: hulaArmRight 0.7s ease-in-out infinite;
+    animation-delay: var(--bd, 0s);
+  }
+  @keyframes hulaArmLeft{
+    0%,100%{ transform: rotate(-70deg); }
+    50%{ transform: rotate(-100deg); }
+  }
+  @keyframes hulaArmRight{
+    0%,100%{ transform: rotate(70deg); }
+    50%{ transform: rotate(100deg); }
+  }
+  .seat-tag{
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 1px 9px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    white-space: nowrap;
+    max-width: 66px;
+    overflow:hidden;
+    text-overflow: ellipsis;
+  }
+  .overflow-badge{
+    display:inline-block;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: #faf9f6;
+    border: 1px dashed var(--border);
+    border-radius: 999px;
+    padding: 4px 12px;
+  }
+  .slip{
+    position:absolute;
+    left:50%; top:50%;
+    width:12px; height:17px;
+    background:#fff;
+    border:1px solid #d8cdb8;
+    border-radius:3px;
+    transform: translate(-50%,-50%);
+    opacity:0;
+    animation: flySlip 0.9s ease forwards;
+    pointer-events:none;
+  }
+  @keyframes flySlip{
+    0%{ opacity:0; transform: translate(-50%,-50%) scale(0.6) rotate(0deg); }
+    18%{ opacity:1; }
+    100%{ opacity:0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.85) rotate(300deg); }
+  }
+
+  .draw-btn{
+    background: linear-gradient(135deg, var(--accent), #ff8a5c);
+    color:#fff; border:none; border-radius: 999px;
+    padding: 15px 38px; font-size: 16px; font-weight: 700;
+    cursor:pointer;
+    box-shadow: 0 6px 18px rgba(255,107,74,0.32);
+    margin-top: 16px;
+    transition: transform 0.12s;
+  }
+  .draw-btn:hover{ transform: translateY(-1px); }
+  .draw-btn:active{ transform: scale(0.97); }
+  .draw-btn:disabled{ background:#ddd8ce; box-shadow:none; cursor:not-allowed; color:#9a9384; }
+
+  /* ---------- 청소 항목 ---------- */
+  .task-list{ display:flex; flex-direction:column; gap:6px; }
+  .task-row{
+    display:flex; align-items:center; gap:10px;
+    padding: 9px 10px; border-radius: 10px;
+    background: #fafaf8; border: 1px solid var(--border);
+  }
+  .task-row input[type="text"]{
+    border:none; background:transparent; font-size:14px;
+    padding:4px 2px; outline:none; color:var(--text);
+  }
+  .task-row .task-name{ flex: 1 1 auto; min-width:0; }
+  .task-row .task-time{ width: 74px; flex-shrink:0; color: var(--text-muted); text-align:right; }
+  .row-del{
+    border:none; background:transparent; color: var(--text-muted);
+    font-size: 16px; cursor:pointer; padding: 2px 6px; border-radius:6px; line-height:1;
+  }
+  .row-del:hover{ background:#f1e6e2; color:#c0392b; }
+  .add-row{ display:flex; gap:8px; margin-top: 12px; }
+  .add-row input{
+    flex:1; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--border); font-size: 14px; outline:none; background:#fff;
+  }
+  .add-row input:focus{ border-color: var(--primary); }
+  .add-row input.time-input{ flex: 0 0 90px; }
+  .btn{
+    border:none; border-radius: 10px; padding: 9px 16px;
+    font-size: 14px; font-weight: 600; cursor:pointer;
+    transition: transform 0.08s, opacity 0.15s;
+  }
+  .btn:active{ transform: scale(0.97); }
+  .btn-primary{ background: var(--primary); color:#fff; }
+  .btn-primary:hover{ opacity:0.92; }
+  .btn-ghost{ background: var(--primary-light); color: var(--primary); }
+  .btn-ghost:hover{ opacity:0.85; }
+  .empty{ text-align:center; color: var(--text-muted); font-size: 13.5px; padding: 20px 0; }
+
+  /* ---------- 모달 공통 ---------- */
+  .modal-backdrop{
+    position: fixed; inset:0;
+    background: rgba(30,25,15,0.42);
+    display:flex; align-items:center; justify-content:center;
+    padding: 20px;
+    z-index: 100;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 0.18s;
+  }
+  .modal-backdrop.show{ opacity:1; pointer-events:auto; }
+  .modal{
+    background:#fff;
+    border-radius: 18px;
+    max-width: 460px;
+    width:100%;
+    max-height: 82vh;
+    overflow-y:auto;
+    padding: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    transform: translateY(10px) scale(0.98);
+    transition: transform 0.18s;
+  }
+  .modal-backdrop.show .modal{ transform: translateY(0) scale(1); }
+  .modal h3{ margin: 0 0 4px; font-size: 17px; }
+  .modal .modal-sub{ margin:0 0 16px; font-size: 12.5px; color: var(--text-muted); }
+  .modal-close{
+    position:absolute; top:14px; right:16px;
+    border:none; background:transparent; font-size:18px; color:var(--text-muted); cursor:pointer;
+  }
+  .modal-wrap-rel{ position:relative; }
+
+  /* 결과 팝업 */
+  .result-list{ display:flex; flex-direction:column; gap:8px; margin-bottom: 14px; }
+  .result-card{
+    background: var(--success-light);
+    border: 1px solid #cdeedb;
+    border-radius: 12px;
+    padding: 11px 14px;
+    text-align:left;
+  }
+  .result-card .name{ font-weight: 700; font-size: 14px; margin-bottom: 4px; color: #146c3a; }
+  .result-card .task-item{ font-size: 13px; color: var(--text); line-height: 1.5; }
+  .result-card .task-item .time{ color: var(--text-muted); font-size: 12px; }
+  .result-card .mates{ color: var(--text-muted); font-size: 11.5px; }
+  .result-actions{ display:flex; gap:10px; }
+  .result-actions .btn{ flex:1; }
+  .copy-box{
+    margin-top: 12px; background: #faf9f6; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; font-size: 12.5px; line-height: 1.6;
+    white-space: pre-wrap; color: var(--text); max-height: 200px; overflow-y:auto;
+  }
+
+  .toast{
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #2b2926; color:#fff; padding: 10px 18px; border-radius: 999px;
+    font-size: 13px; opacity: 0; pointer-events:none; transition: opacity 0.2s, transform 0.2s;
+    z-index: 200;
+  }
+  .toast.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
+  .footnote{ text-align:center; color: #b3ac9d; font-size: 11.5px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🧹 청소당번 제비뽑기</h1>
+    <p>이름을 골라 테이블에 앉히고, 제비뽑기로 청소 담당을 정해요</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="people">① 인원 선택 &amp; 제비뽑기</button>
+    <button class="tab-btn" data-tab="tasks">② 청소 항목</button>
+  </div>
+
+  <!-- TAB 1: 인원 선택 + 테이블 + 뽑기 -->
+  <section class="panel active" id="panel-people">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>오늘 참여 인원</h2>
+          <p class="sub">이름을 눌러 참여 인원을 선택하세요</p>
+        </div>
+        <button class="side-btn" onclick="openPeopleModal()">✏️ 명단 수정</button>
+      </div>
+      <div class="chip-grid" id="chipGrid"></div>
+      <div class="status-line">
+        선택 <b id="personSelectedCount">0</b>명 / 전체 <b id="personTotalCount">0</b>명
+      </div>
+    </div>
+
+    <div class="card table-card">
+      <div class="table-outer">
+        <div class="table-wrap" id="tableWrap">
+          <svg viewBox="0 0 260 260" width="260" height="260">
+            <circle cx="130" cy="130" r="118" fill="#dcbb8c" stroke="#c3a06a" stroke-width="6"/>
+            <circle cx="130" cy="130" r="92" fill="#ecd3a6"/>
+            <g id="lotteryCup" transform="translate(130,130)">
+              <path d="M-16,9 L-12,-13 L12,-13 L16,9 Z" fill="#8b5e34"/>
+              <rect class="stick" x="-2" y="-30" width="4" height="22" rx="2" fill="#ff6b4a" style="--rot:-16deg; transform: rotate(-16deg) translateY(-8px);"/>
+              <rect class="stick" x="-2" y="-32" width="4" height="24" rx="2" fill="#4f46e5" style="--rot:-4deg; transform: rotate(-4deg) translateY(-9px);"/>
+              <rect class="stick" x="-2" y="-31" width="4" height="23" rx="2" fill="#1f9d55" style="--rot:8deg; transform: rotate(8deg) translateY(-8px);"/>
+              <rect class="stick" x="-2" y="-29" width="4" height="21" rx="2" fill="#ffb74d" style="--rot:19deg; transform: rotate(19deg) translateY(-7px);"/>
+            </g>
+          </svg>
+          <div class="seats" id="seatsLayer"></div>
+        </div>
+      </div>
+      <div id="overflowBadge"></div>
+      <div class="status-line" id="drawInfo" style="border-top:none; margin-top:6px; padding-top:0;"></div>
+      <button class="draw-btn" id="drawBtn" onclick="startDraw()">🎲 제비뽑기 시작</button>
+    </div>
+  </section>
+
+  <!-- TAB 2: 청소 항목 -->
+  <section class="panel" id="panel-tasks">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2>청소 항목 목록</h2>
+          <p class="sub">항목명과 시간을 자유롭게 수정할 수 있어요</p>
+        </div>
+      </div>
+      <div class="task-list" id="taskList"></div>
+      <div class="add-row">
+        <input type="text" id="newTaskNameInput" placeholder="청소 항목 입력 후 추가">
+        <input type="text" class="time-input" id="newTaskTimeInput" placeholder="시간(선택)">
+        <button class="btn btn-ghost" onclick="addTask()">+ 추가</button>
+      </div>
+      <div class="status-line">총 <b id="taskTotalCount">0</b>개 항목</div>
+    </div>
+  </section>
+
+  <div class="footnote">명단·청소 항목 수정 내용은 이 브라우저에 자동 저장돼요. (참여 인원 체크는 매번 새로 선택해주세요)</div>
+</div>
+
+<!-- 명단 수정 모달 -->
+<div class="modal-backdrop" id="peopleModalBackdrop">
+  <div class="modal modal-wrap-rel">
+    <button class="modal-close" onclick="closePeopleModal()">✕</button>
+    <h3>명단 수정</h3>
+    <p class="modal-sub">인원을 추가하거나 삭제하세요. 선택 상태는 유지돼요.</p>
+    <div class="task-list" id="editPersonList"></div>
+    <div class="add-row">
+      <input type="text" id="newPersonInput" placeholder="이름 입력 후 추가">
+      <button class="btn btn-ghost" onclick="addPerson()">+ 추가</button>
+    </div>
+  </div>
+</div>
+
+<!-- 결과 팝업 -->
+<div class="modal-backdrop" id="resultModalBackdrop">
+  <div class="modal modal-wrap-rel">
+    <button class="modal-close" onclick="closeResultModal()">✕</button>
+    <h3>🎉 제비뽑기 결과</h3>
+    <p class="modal-sub" id="resultDateLine"></p>
+    <div class="result-list" id="resultList"></div>
+    <div class="result-actions">
+      <button class="btn btn-ghost" onclick="startDraw()">🔄 다시 뽑기</button>
+      <button class="btn btn-primary" onclick="copyResult()">📋 결과 복사하기</button>
+    </div>
+    <div class="copy-box" id="copyBox"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------- 초기 데이터 ----------
+  const DEFAULT_PEOPLE = ["송송이","이호연","김진기","이이슬","최보경","노도원","이윤석","조휘영","백희영","유아림","김리영","박은지"];
+  const DEFAULT_TASKS = [
+    {name:"바 전체 상판 닦기", time:"15:00"},
+    {name:"크린콜로 제빙기 내외부 닦기", time:"15:00"},
+    {name:"행주 • 스쿱 세척", time:"14:00"},
+    {name:"행주 담그고 일회용 교체", time:"15:00"},
+    {name:"크린콜로 내벽 및 냉장고 내외부 닦기", time:"16:00"},
+    {name:"탄산수 채우기", time:"14:00"},
+    {name:"베버리지 폐기 체크", time:"15:00"},
+    {name:"전체 부자재 채우기", time:"15:00"},
+    {name:"분리수거함 비우기", time:"16:00"},
+  ];
+  const PASTELS = ["#FFE1E1","#FFF1CE","#E4F5D0","#D2F3EA","#DCE6FF","#EBDCFF","#FFE0F0","#E6E6E6"];
+  const SOLIDS  = ["#FF9E9E","#FFC66B","#8FCB63","#59C6A9","#7C97FF","#B98BFF","#FF8FC2","#B0AFAA"];
+  const MAX_SEATS = 6;
+  const DRAW_DURATION_MS = 2600; // 제비뽑기 애니메이션 총 길이 (2~3초)
+  const STORAGE_KEY = 'cleaningDutyDraw_v1';
+
+  function loadSavedState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return null;
+      const data = JSON.parse(raw);
+      if(data && Array.isArray(data.people) && Array.isArray(data.tasks)) return data;
+    }catch(e){ /* 저장소를 쓸 수 없는 환경 - 그냥 기본값 사용 */ }
+    return null;
+  }
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        people: people.map(p=>({id:p.id, name:p.name})),
+        tasks: tasks.map(t=>({id:t.id, name:t.name, time:t.time})),
+        nextPersonId, nextTaskId
+      }));
+    }catch(e){ /* 저장 실패해도 앱은 계속 동작하도록 무시 */ }
+  }
+
+  const saved = loadSavedState();
+  let people, nextPersonId, tasks, nextTaskId;
+  if(saved){
+    people = saved.people.map((p,i)=>({id:p.id, name:p.name, selected: i < 6}));
+    nextPersonId = saved.nextPersonId ?? (Math.max(-1, ...saved.people.map(p=>p.id)) + 1);
+    tasks = saved.tasks.map(t=>({id:t.id, name:t.name, time:t.time}));
+    nextTaskId = saved.nextTaskId ?? (Math.max(-1, ...saved.tasks.map(t=>t.id)) + 1);
+  } else {
+    people = DEFAULT_PEOPLE.map((name,i)=>({id:i, name, selected: i < 6})); // 처음엔 예시로 6명만 선택
+    nextPersonId = people.length;
+    tasks = DEFAULT_TASKS.map((t,i)=>({id:i, name:t.name, time:t.time}));
+    nextTaskId = tasks.length;
+  }
+  let lastResult = null;
+
+  function colorFor(id){ return { pastel: PASTELS[id % PASTELS.length], solid: SOLIDS[id % SOLIDS.length] }; }
+
+  // ---------- 탭 ----------
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // ---------- 인원 칩 렌더 ----------
+  function renderChips(){
+    const grid = document.getElementById('chipGrid');
+    grid.innerHTML = '';
+    if(people.length===0){
+      grid.innerHTML = '<div class="chip-empty">등록된 인원이 없어요. "명단 수정"에서 추가해주세요.</div>';
+    }
+    people.forEach(p=>{
+      const c = colorFor(p.id);
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (p.selected ? ' selected' : '');
+      chip.style.background = c.pastel;
+      chip.textContent = p.name;
+      chip.onclick = ()=>{ p.selected = !p.selected; renderChips(); renderSeats(); updateDrawInfo(); };
+      grid.appendChild(chip);
+    });
+    document.getElementById('personTotalCount').textContent = people.length;
+    document.getElementById('personSelectedCount').textContent = people.filter(p=>p.selected).length;
+  }
+
+  // ---------- 원형 테이블 좌석 렌더 ----------
+  function renderSeats(){
+    const layer = document.getElementById('seatsLayer');
+    layer.innerHTML = '';
+    const selected = people.filter(p=>p.selected);
+    const seated = selected.slice(0, MAX_SEATS);
+    const overflow = selected.length - seated.length;
+    const cx = 130, cy = 130, r = 108;
+    const n = seated.length;
+    seated.forEach((p, i)=>{
+      const angle = (-90 + (360 / n) * i) * Math.PI / 180;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      const c = colorFor(p.id);
+      const seat = document.createElement('div');
+      seat.className = 'seat';
+      seat.style.left = x + 'px';
+      seat.style.top = y + 'px';
+      seat.style.setProperty('--bd', (i * 0.08) + 's');
+      seat.style.setProperty('--dir', (i % 2 === 0 ? 1 : -1));
+      seat.dataset.x = x; seat.dataset.y = y;
+      seat.innerHTML = `
+        <svg viewBox="0 0 40 56" width="30" height="42" style="overflow:visible;">
+          <circle cx="20" cy="12" r="11" fill="${c.solid}"/>
+          <path d="M4 54 C4 34 8 24 20 24 C32 24 36 34 36 54 Z" fill="${c.solid}"/>
+          <rect class="arm arm-left" x="1" y="27" width="6" height="32" rx="3" fill="${c.solid}" style="transform-box:fill-box; transform-origin:50% 0%; transform:rotate(-16deg);"/>
+          <rect class="arm arm-right" x="33" y="27" width="6" height="32" rx="3" fill="${c.solid}" style="transform-box:fill-box; transform-origin:50% 0%; transform:rotate(16deg);"/>
+        </svg>
+        <div class="seat-tag">${escapeHtml(p.name)}</div>
+      `;
+      layer.appendChild(seat);
+    });
+    const badge = document.getElementById('overflowBadge');
+    badge.innerHTML = overflow > 0 ? `<span class="overflow-badge">+${overflow}명은 테이블 밖에서 함께해요 (뽑기에는 모두 포함돼요)</span>` : '';
+  }
+
+  // ---------- 명단 수정 모달 ----------
+  function openPeopleModal(){
+    renderEditPersonList();
+    document.getElementById('peopleModalBackdrop').classList.add('show');
+  }
+  function closePeopleModal(){
+    document.getElementById('peopleModalBackdrop').classList.remove('show');
+  }
+  function renderEditPersonList(){
+    const list = document.getElementById('editPersonList');
+    list.innerHTML = '';
+    if(people.length===0){
+      list.innerHTML = '<div class="empty">등록된 인원이 없어요.</div>';
+    }
+    people.forEach(p=>{
+      const row = document.createElement('div');
+      row.className = 'task-row';
+      row.innerHTML = `
+        <input type="text" class="task-name" value="${escapeAttr(p.name)}" onchange="updatePersonName(${p.id}, this.value)">
+        <button class="row-del" title="삭제" onclick="removePerson(${p.id})">✕</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+  function updatePersonName(id, val){
+    const p = people.find(p=>p.id===id);
+    if(p && val.trim()) p.name = val.trim();
+    renderChips(); renderSeats(); saveState();
+  }
+  function addPerson(){
+    const input = document.getElementById('newPersonInput');
+    const name = input.value.trim();
+    if(!name) return;
+    people.push({id: nextPersonId++, name, selected:true});
+    input.value='';
+    renderEditPersonList(); renderChips(); renderSeats(); updateDrawInfo(); saveState();
+    input.focus();
+  }
+  document.getElementById('newPersonInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addPerson(); });
+  function removePerson(id){
+    people = people.filter(p=>p.id!==id);
+    renderEditPersonList(); renderChips(); renderSeats(); updateDrawInfo(); saveState();
+  }
+
+  // ---------- 청소 항목 렌더 ----------
+  function renderTasks(){
+    const list = document.getElementById('taskList');
+    list.innerHTML = '';
+    if(tasks.length===0){
+      list.innerHTML = '<div class="empty">등록된 청소 항목이 없어요. 아래에서 추가해주세요.</div>';
+    }
+    tasks.forEach(t=>{
+      const row = document.createElement('div');
+      row.className = 'task-row';
+      row.innerHTML = `
+        <input type="text" class="task-name" value="${escapeAttr(t.name)}" onchange="updateTaskName(${t.id}, this.value)">
+        <input type="text" class="task-time" placeholder="시간" value="${escapeAttr(t.time||'')}" onchange="updateTaskTime(${t.id}, this.value)">
+        <button class="row-del" title="삭제" onclick="removeTask(${t.id})">✕</button>
+      `;
+      list.appendChild(row);
+    });
+    document.getElementById('taskTotalCount').textContent = tasks.length;
+  }
+  function updateTaskName(id, val){ const t = tasks.find(t=>t.id===id); if(t) t.name = val.trim(); saveState(); }
+  function updateTaskTime(id, val){ const t = tasks.find(t=>t.id===id); if(t) t.time = val.trim(); saveState(); }
+  function addTask(){
+    const nameInput = document.getElementById('newTaskNameInput');
+    const timeInput = document.getElementById('newTaskTimeInput');
+    const name = nameInput.value.trim();
+    if(!name) return;
+    tasks.push({id: nextTaskId++, name, time: timeInput.value.trim()});
+    nameInput.value=''; timeInput.value='';
+    renderTasks(); saveState();
+    nameInput.focus();
+  }
+  document.getElementById('newTaskNameInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+  document.getElementById('newTaskTimeInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+  function removeTask(id){ tasks = tasks.filter(t=>t.id!==id); renderTasks(); saveState(); }
+
+  // ---------- 뽑기 안내 문구 ----------
+  function updateDrawInfo(){
+    const selected = people.filter(p=>p.selected);
+    const n = selected.length, m = tasks.length;
+    const info = document.getElementById('drawInfo');
+    const btn = document.getElementById('drawBtn');
+    if(n===0){ info.textContent = '위에서 참여 인원을 선택해주세요.'; btn.disabled = true; return; }
+    if(m===0){ info.textContent = '② 청소 항목 탭에서 항목을 등록해주세요.'; btn.disabled = true; return; }
+    btn.disabled = false;
+    if(n === m){ info.textContent = `참여 ${n}명 · 항목 ${m}개 → 1인당 1개씩 배정돼요.`; }
+    else if(n > m){
+      const base = Math.floor(n/m), rem = n%m;
+      info.textContent = rem===0 ? `참여 ${n}명 · 항목 ${m}개 → 항목당 ${base}명씩 배정돼요.`
+        : `참여 ${n}명 · 항목 ${m}개 → 항목당 ${base}~${base+1}명씩 골고루 배정돼요.`;
+    } else {
+      const base = Math.floor(m/n), rem = m%n;
+      info.textContent = rem===0 ? `참여 ${n}명 · 항목 ${m}개 → 1인당 ${base}개씩 배정돼요.`
+        : `참여 ${n}명 · 항목 ${m}개 → 1인당 ${base}~${base+1}개씩 골고루 배정돼요.`;
+    }
+  }
+
+  // ---------- 뽑기 로직 ----------
+  function shuffle(arr){
+    const a = arr.slice();
+    for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
+    return a;
+  }
+  function computeAssignment(selectedPeople, taskList){
+    const n = selectedPeople.length, m = taskList.length;
+    const assignments = {};
+    selectedPeople.forEach(p=> assignments[p.id] = []);
+    if(n >= m){
+      const shuffledPeople = shuffle(selectedPeople);
+      const shuffledTasks = shuffle(taskList);
+      const base = Math.floor(n/m), rem = n%m;
+      let sizes = taskList.map((_,i)=> base + (i<rem?1:0));
+      sizes = shuffle(sizes);
+      let idx = 0;
+      shuffledTasks.forEach((task,i)=>{
+        const size = sizes[i];
+        const group = shuffledPeople.slice(idx, idx+size);
+        idx += size;
+        group.forEach(p=>{
+          assignments[p.id].push({ name: task.name, time: task.time, mates: group.filter(x=>x.id!==p.id).map(x=>x.name) });
+        });
+      });
+    } else {
+      const shuffledTasks = shuffle(taskList);
+      const shuffledPeople = shuffle(selectedPeople);
+      const base = Math.floor(m/n), rem = m%n;
+      let sizes = selectedPeople.map((_,i)=> base + (i<rem?1:0));
+      sizes = shuffle(sizes);
+      let idx = 0;
+      shuffledPeople.forEach((p,i)=>{
+        const size = sizes[i];
+        const group = shuffledTasks.slice(idx, idx+size);
+        idx += size;
+        group.forEach(task=> assignments[p.id].push({ name: task.name, time: task.time, mates: [] }));
+      });
+    }
+    return assignments;
+  }
+
+  function startDraw(){
+    closeResultModal();
+    const selectedPeople = people.filter(p=>p.selected);
+    if(selectedPeople.length===0){ showToast('참여 인원을 선택해주세요.'); return; }
+    if(tasks.length===0){ showToast('청소 항목을 등록해주세요.'); document.querySelector('.tab-btn[data-tab="tasks"]').click(); return; }
+
+    const assignments = computeAssignment(selectedPeople, tasks);
+    const order = shuffle(selectedPeople);
+
+    const tableWrap = document.getElementById('tableWrap');
+    const btn = document.getElementById('drawBtn');
+    btn.disabled = true;
+    tableWrap.classList.add('drawing');
+    spawnSlips();
+
+    setTimeout(()=>{
+      tableWrap.classList.remove('drawing');
+      btn.disabled = false;
+      lastResult = { order, assignments };
+      openResultModal();
+    }, DRAW_DURATION_MS);
+  }
+
+  function spawnSlips(){
+    const layer = document.getElementById('seatsLayer');
+    document.querySelectorAll('.slip').forEach(s=>s.remove());
+    const seats = layer.querySelectorAll('.seat');
+    seats.forEach((seat, i)=>{
+      const dx = (parseFloat(seat.dataset.x) - 130);
+      const dy = (parseFloat(seat.dataset.y) - 130);
+      const slip = document.createElement('div');
+      slip.className = 'slip';
+      slip.style.setProperty('--dx', dx + 'px');
+      slip.style.setProperty('--dy', dy + 'px');
+      slip.style.animationDelay = (i * 0.18) + 's';
+      layer.appendChild(slip);
+      // 반복 효과: 살짝 시간차 두고 한 번 더
+      setTimeout(()=>{
+        const slip2 = document.createElement('div');
+        slip2.className = 'slip';
+        slip2.style.setProperty('--dx', dx + 'px');
+        slip2.style.setProperty('--dy', dy + 'px');
+        layer.appendChild(slip2);
+      }, 1100 + i*80);
+    });
+  }
+
+  // ---------- 결과 팝업 ----------
+  function openResultModal(){
+    if(!lastResult) return;
+    const { order, assignments } = lastResult;
+    const now = new Date();
+    document.getElementById('resultDateLine').textContent =
+      `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')} 뽑기 결과`;
+
+    let html = '';
+    order.forEach(p=>{
+      const items = assignments[p.id] || [];
+      html += `<div class="result-card">
+        <div class="name">${escapeHtml(p.name)}</div>
+        ${items.map(it=>`
+          <div class="task-item">• ${escapeHtml(it.name)} ${it.time?`<span class="time">(${escapeHtml(it.time)})</span>`:''}
+            ${it.mates.length? `<div class="mates">함께: ${it.mates.map(escapeHtml).join(', ')}</div>`:''}
+          </div>`).join('')}
+      </div>`;
+    });
+    document.getElementById('resultList').innerHTML = html;
+    document.getElementById('copyBox').textContent = buildResultText();
+    document.getElementById('resultModalBackdrop').classList.add('show');
+  }
+  function closeResultModal(){
+    document.getElementById('resultModalBackdrop').classList.remove('show');
+  }
+
+  function buildResultText(){
+    if(!lastResult) return '';
+    const { order, assignments } = lastResult;
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+    const lines = [`🧹 청소당번 제비뽑기 결과 (${dateStr})`, ''];
+    order.forEach(p=>{
+      const items = assignments[p.id] || [];
+      const itemStrs = items.map(it=>{
+        let s = it.time ? `${it.name} (${it.time})` : it.name;
+        if(it.mates.length) s += ` [함께: ${it.mates.join(', ')}]`;
+        return s;
+      });
+      lines.push(`${p.name} : ${itemStrs.join(' / ')}`);
+    });
+    return lines.join('\n');
+  }
+
+  function copyResult(){
+    const text = buildResultText();
+    const fallbackCopy = ()=>{
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      try{ document.execCommand('copy'); showToast('결과를 복사했어요 ✅'); }
+      catch(e){ showToast('복사에 실패했어요. 직접 선택해 복사해주세요.'); }
+      document.body.removeChild(ta);
+    };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(()=> showToast('결과를 복사했어요 ✅')).catch(fallbackCopy);
+    } else { fallbackCopy(); }
+  }
+
+  // ---------- 유틸 ----------
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(()=> t.classList.remove('show'), 1800);
+  }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  }
+  function escapeAttr(str){ return escapeHtml(str); }
+
+  // ---------- 초기화 ----------
+  renderChips();
+  renderSeats();
+  renderTasks();
+  updateDrawInfo();
+</script>
+</body>
+</html>
