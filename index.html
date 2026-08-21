@@ -481,12 +481,12 @@
   const saved = loadSavedState();
   let people, nextPersonId, tasks, nextTaskId;
   if(saved){
-    people = saved.people.map((p,i)=>({id:p.id, name:p.name, selected: i < 6}));
+    people = saved.people.map((p)=>({id:p.id, name:p.name, selected: false}));
     nextPersonId = saved.nextPersonId ?? (Math.max(-1, ...saved.people.map(p=>p.id)) + 1);
     tasks = saved.tasks.map(t=>({id:t.id, name:t.name, time:t.time}));
     nextTaskId = saved.nextTaskId ?? (Math.max(-1, ...saved.tasks.map(t=>t.id)) + 1);
   } else {
-    people = DEFAULT_PEOPLE.map((name,i)=>({id:i, name, selected: i < 6})); // 처음엔 예시로 6명만 선택
+    people = DEFAULT_PEOPLE.map((name,i)=>({id:i, name, selected: false})); // 클릭해서 선택하기 전까진 전원 미선택
     nextPersonId = people.length;
     tasks = DEFAULT_TASKS.map((t,i)=>({id:i, name:t.name, time:t.time}));
     nextTaskId = tasks.length;
@@ -594,7 +594,7 @@
     const input = document.getElementById('newPersonInput');
     const name = input.value.trim();
     if(!name) return;
-    people.push({id: nextPersonId++, name, selected:true});
+    people.push({id: nextPersonId++, name, selected:false});
     input.value='';
     renderEditPersonList(); renderChips(); renderSeats(); updateDrawInfo(); saveState();
     input.focus();
